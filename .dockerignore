@@ -1,0 +1,7 @@
+.git
+**/node_modules
+results
+k8s
+scripts
+*.md
+.gitignore
