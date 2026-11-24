@@ -1,0 +1,23 @@
+===== BEFORE DELETE =====
+NAME      READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE   READINESS GATES
+mongo-1   1/1     Running   0          16m   10.244.0.8   emi    <none>           <none>
+NAME           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-mongo-1   Bound    pvc-f8b8a526-6d97-4851-8279-b266ee5cb87a   1Gi        RWO            standard       <unset>                 16m
+--- document count read from mongo-0 (PRIMARY) ---
+2
+--- document count read from mongo-1 itself ---
+2
+===== DELETING mongo-1 =====
+pod "mongo-1" deleted from emi namespace
+pod/mongo-1 condition met
+===== AFTER RECREATION =====
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE   NOMINATED NODE   READINESS GATES
+mongo-1   1/1     Running   0          4s    10.244.0.14   emi    <none>           <none>
+NAME           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-mongo-1   Bound    pvc-f8b8a526-6d97-4851-8279-b266ee5cb87a   1Gi        RWO            standard       <unset>                 16m
+--- document count read from mongo-1 itself ---
+2
+--- replica set status ---
+mongo-0.mongo:27017 -> SECONDARY
+mongo-1.mongo:27017 -> SECONDARY
+mongo-2.mongo:27017 -> PRIMARY
