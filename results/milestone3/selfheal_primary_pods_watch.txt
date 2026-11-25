@@ -1,0 +1,20 @@
+15:40:09 NAME                      READY   STATUS      RESTARTS       AGE
+15:40:09 emi-web-5ccfc8996-69lzs   1/1     Running     0              10m
+15:40:09 emi-web-5ccfc8996-f7fl7   1/1     Running     17 (36h ago)   2d8h
+15:40:09 emi-web-5ccfc8996-ltbgt   1/1     Running     0              24m
+15:40:09 emi-web-5ccfc8996-sb7kj   1/1     Running     13 (36h ago)   2d8h
+15:40:09 emi-web-5ccfc8996-whhrd   1/1     Running     13 (26h ago)   2d8h
+15:40:09 mongo-0                   1/1     Running     1 (36h ago)    2d9h
+15:40:09 mongo-1                   1/1     Running     1 (36h ago)    2d8h
+15:40:09 mongo-2                   1/1     Running     1 (36h ago)    2d9h
+15:40:09 mongo-init-5ljzg          0/1     Completed   0              2d8h
+15:40:19 mongo-2                   1/1     Terminating   1 (36h ago)    2d9h
+15:40:19 mongo-2                   1/1     Terminating   1 (36h ago)    2d9h
+15:40:36 mongo-2                   0/1     Completed     1 (36h ago)    2d9h
+15:40:37 mongo-2                   0/1     Completed     1 (36h ago)    2d9h
+15:40:37 mongo-2                   0/1     Completed     1 (36h ago)    2d9h
+15:40:37 mongo-2                   0/1     Pending       0              0s
+15:40:37 mongo-2                   0/1     Pending       0              0s
+15:40:37 mongo-2                   0/1     ContainerCreating   0              0s
+15:40:39 mongo-2                   0/1     ContainerCreating   0              2s
+15:40:39 mongo-2                   1/1     Running             0              2s

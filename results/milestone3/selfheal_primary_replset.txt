@@ -1,0 +1,46 @@
+15:40:07 BEFORE (PRIMARY=mongo-2)
+mongo-0.mongo:27017 SECONDARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 PRIMARY
+term Long('109')
+15:40:19 DELETING PRIMARY mongo-2
+--- 15:40:24 (+5s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:40:30 (+10s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:40:37 (+15s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 (not reachable/healthy)
+term Long('110')
+--- 15:40:43 (+20s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:40:51 (+25s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:41:00 (+30s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:41:13 (+35s after delete)
+mongo-0.mongo:27017 SECONDARY
+mongo-1.mongo:27017 PRIMARY
+mongo-2.mongo:27017 SECONDARY
+term Long('111')
+--- 15:41:20 (+40s after delete)
+mongo-0.mongo:27017 SECONDARY
+mongo-1.mongo:27017 PRIMARY
+mongo-2.mongo:27017 SECONDARY
+term Long('111')
