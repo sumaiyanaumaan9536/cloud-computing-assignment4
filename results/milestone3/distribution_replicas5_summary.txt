@@ -1,0 +1,7 @@
+Requests served per pod (replicas5, 30 requests):
+      7 emi-web-5ccfc8996-sb7kj
+      6 emi-web-5ccfc8996-whhrd
+      6 emi-web-5ccfc8996-ltbgt
+      6 emi-web-5ccfc8996-f7fl7
+      5 emi-web-5ccfc8996-bvjwd
+replica-set term before: 105, after: 105
