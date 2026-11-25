@@ -1,0 +1,74 @@
+2026-11-25 17:45:55 phase1_10rps
+emi-web   Deployment/emi-web   cpu: 5%/50%   1     5     1     0s
+2026-11-25 17:46:10 phase1_10rps
+emi-web   Deployment/emi-web   cpu: 5%/50%   1     5     1     15s
+2026-11-25 17:46:25 phase1_10rps
+emi-web   Deployment/emi-web   cpu: 5%/50%   1     5     1     31s
+2026-11-25 17:46:41 phase1_10rps
+emi-web   Deployment/emi-web   cpu: 25%/50%   1     5     1     46s
+2026-11-25 17:46:56 phase1_10rps
+emi-web   Deployment/emi-web   cpu: 25%/50%   1     5     1     61s
+2026-11-25 17:47:11 phase1_10rps
+emi-web   Deployment/emi-web   cpu: 25%/50%   1     5     1     77s
+2026-11-25 17:47:27 phase1_10rps
+emi-web   Deployment/emi-web   cpu: 25%/50%   1     5     1     92s
+2026-11-25 17:47:42 phase1_10rps
+emi-web   Deployment/emi-web   cpu: 36%/50%   1     5     1     107s
+2026-11-25 17:47:57 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 36%/50%   1     5     1     2m3s
+2026-11-25 17:48:13 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 36%/50%   1     5     1     2m19s
+2026-11-25 17:48:29 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 36%/50%   1     5     1     2m39s
+2026-11-25 17:48:50 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 171%/50%   1     5     1     2m57s
+2026-11-25 17:49:07 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 171%/50%   1     5     4     3m16s
+2026-11-25 17:49:26 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 171%/50%   1     5     4     3m34s
+2026-11-25 17:49:45 phase2_100rps
+emi-web   Deployment/emi-web   cpu: <unknown>/50%   1     5     4     3m56s
+2026-11-25 17:50:06 phase2_100rps
+emi-web   Deployment/emi-web   cpu: <unknown>/50%   1     5     4     4m16s
+2026-11-25 17:50:26 phase2_100rps
+emi-web   Deployment/emi-web   cpu: <unknown>/50%   1     5     4     4m40s
+2026-11-25 17:50:50 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 120%/50%   1     5     4     5m2s
+2026-11-25 17:51:12 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 120%/50%   1     5     4     5m17s
+2026-11-25 17:51:27 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 120%/50%   1     5     4     5m33s
+2026-11-25 17:51:43 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 120%/50%   1     5     4     5m49s
+2026-11-25 17:51:59 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 189%/50%   1     5     4     6m5s
+2026-11-25 17:52:15 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 189%/50%   1     5     4     6m20s
+2026-11-25 17:52:30 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 189%/50%   1     5     4     6m36s
+2026-11-25 17:52:46 phase2_100rps
+emi-web   Deployment/emi-web   cpu: 189%/50%   1     5     4     6m52s
+2026-11-25 17:53:02 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 135%/50%   1     5     5     7m7s
+2026-11-25 17:53:17 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 135%/50%   1     5     5     7m23s
+2026-11-25 17:53:33 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 135%/50%   1     5     5     7m38s
+2026-11-25 17:53:48 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 49%/50%   1     5     5     7m54s
+2026-11-25 17:54:04 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 49%/50%   1     5     5     8m9s
+2026-11-25 17:54:19 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 49%/50%   1     5     5     8m25s
+2026-11-25 17:54:35 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 49%/50%   1     5     5     8m40s
+2026-11-25 17:54:50 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 15%/50%   1     5     5     8m55s
+2026-11-25 17:55:05 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 15%/50%   1     5     5     9m11s
+2026-11-25 17:55:21 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 15%/50%   1     5     5     9m26s
+2026-11-25 17:55:36 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 15%/50%   1     5     5     9m42s
+2026-11-25 17:55:52 phase3_10rps
+emi-web   Deployment/emi-web   cpu: 14%/50%   1     5     5     9m57s
