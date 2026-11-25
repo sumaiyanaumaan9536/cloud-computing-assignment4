@@ -1,0 +1,52 @@
+16:13:50 NAME                      READY   STATUS      RESTARTS       AGE
+16:13:50 emi-web-5ccfc8996-69lzs   1/1     Running     1 (11m ago)    44m
+16:13:50 emi-web-5ccfc8996-f7fl7   1/1     Running     18 (11m ago)   2d9h
+16:13:50 emi-web-5ccfc8996-ltbgt   1/1     Running     1 (11m ago)    58m
+16:13:50 emi-web-5ccfc8996-sb7kj   1/1     Running     14 (11m ago)   2d9h
+16:13:50 emi-web-5ccfc8996-whhrd   1/1     Running     14 (11m ago)   2d9h
+16:13:50 mongo-0                   1/1     Running     1 (37h ago)    2d9h
+16:13:50 mongo-1                   1/1     Running     1 (37h ago)    2d9h
+16:13:50 mongo-2                   1/1     Running     0              33m
+16:13:50 mongo-init-5ljzg          0/1     Completed   0              2d9h
+16:13:55 emi-web-7ff79975cf-vw7gj   0/1     Pending     0              0s
+16:13:56 emi-web-7ff79975cf-gwwrr   0/1     Pending     0              0s
+16:13:56 emi-web-7ff79975cf-vw7gj   0/1     Pending     0              0s
+16:13:56 emi-web-7ff79975cf-gwwrr   0/1     Pending     0              0s
+16:13:56 emi-web-5ccfc8996-f7fl7    1/1     Terminating   18 (11m ago)   2d9h
+16:13:56 emi-web-7ff79975cf-vw7gj   0/1     ContainerCreating   0              1s
+16:13:56 emi-web-7ff79975cf-gwx9x   0/1     Pending             0              0s
+16:13:56 emi-web-7ff79975cf-gwx9x   0/1     Pending             0              0s
+16:13:56 emi-web-5ccfc8996-f7fl7    1/1     Terminating         18 (11m ago)   2d9h
+16:13:56 emi-web-7ff79975cf-gwwrr   0/1     ContainerCreating   0              1s
+16:13:56 emi-web-7ff79975cf-gwx9x   0/1     ContainerCreating   0              0s
+16:13:58 emi-web-7ff79975cf-gwx9x   0/1     ContainerCreating   0              2s
+16:13:59 emi-web-7ff79975cf-gwwrr   0/1     ContainerCreating   0              4s
+16:13:59 emi-web-7ff79975cf-vw7gj   0/1     ContainerCreating   0              4s
+16:14:00 emi-web-7ff79975cf-gwwrr   0/1     Running             0              5s
+16:14:00 emi-web-7ff79975cf-gwx9x   0/1     Running             0              4s
+16:14:00 emi-web-7ff79975cf-vw7gj   0/1     Running             0              5s
+16:14:06 emi-web-7ff79975cf-gwwrr   1/1     Running             0              11s
+16:14:06 emi-web-5ccfc8996-ltbgt    1/1     Terminating         1 (11m ago)    58m
+16:14:06 emi-web-5ccfc8996-ltbgt    1/1     Terminating         1 (11m ago)    58m
+16:14:06 emi-web-7ff79975cf-kcv72   0/1     Pending             0              0s
+16:14:06 emi-web-7ff79975cf-kcv72   0/1     Pending             0              0s
+16:14:07 emi-web-7ff79975cf-kcv72   0/1     ContainerCreating   0              1s
+16:14:07 emi-web-7ff79975cf-vw7gj   1/1     Running             0              12s
+16:14:07 emi-web-7ff79975cf-vw7gj   1/1     Running             0              12s
+16:14:07 emi-web-7ff79975cf-gwx9x   1/1     Running             0              11s
+16:14:07 emi-web-5ccfc8996-whhrd    1/1     Terminating         14 (11m ago)   2d9h
+16:14:08 emi-web-5ccfc8996-whhrd    1/1     Terminating         14 (11m ago)   2d9h
+16:14:08 emi-web-7ff79975cf-68mzk   0/1     Pending             0              0s
+16:14:08 emi-web-7ff79975cf-68mzk   0/1     Pending             0              0s
+16:14:08 emi-web-5ccfc8996-sb7kj    1/1     Terminating         14 (11m ago)   2d9h
+16:14:08 emi-web-7ff79975cf-68mzk   0/1     ContainerCreating   0              0s
+16:14:08 emi-web-5ccfc8996-sb7kj    1/1     Terminating         14 (11m ago)   2d9h
+16:14:08 emi-web-7ff79975cf-kcv72   0/1     ContainerCreating   0              2s
+16:14:09 emi-web-7ff79975cf-kcv72   0/1     Running             0              3s
+16:14:09 emi-web-7ff79975cf-68mzk   0/1     ContainerCreating   0              1s
+16:14:10 emi-web-7ff79975cf-68mzk   0/1     Running             0              2s
+16:14:15 emi-web-7ff79975cf-kcv72   1/1     Running             0              9s
+16:14:15 emi-web-7ff79975cf-kcv72   1/1     Running             0              9s
+16:14:15 emi-web-5ccfc8996-69lzs    1/1     Terminating         1 (11m ago)    44m
+16:14:15 emi-web-5ccfc8996-69lzs    1/1     Terminating         1 (11m ago)    44m
+16:14:16 emi-web-7ff79975cf-68mzk   1/1     Running             0              8s
