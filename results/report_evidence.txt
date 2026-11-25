@@ -1,0 +1,771 @@
+
+######## Dockerfile ########
+FROM node:20-alpine
+WORKDIR /app
+COPY app/package*.json ./
+RUN npm ci --omit=dev
+COPY app/ ./
+ENV PORT=3000
+EXPOSE 3000
+USER node
+CMD ["node", "server.js"]
+
+######## .dockerignore ########
+.git
+**/node_modules
+results
+k8s
+scripts
+*.md
+.gitignore
+
+######## k8s/00-namespace.yaml ########
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: emi
+
+######## k8s/hpa.yaml ########
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: emi-web
+  namespace: emi
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: emi-web
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+
+######## k8s/ingress.yaml ########
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: emi-web
+  namespace: emi
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: emi.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: emi-web
+                port:
+                  number: 80
+
+######## k8s/mongo-init.yaml ########
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-init
+  namespace: emi
+spec:
+  backoffLimit: 4
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mongo-init
+          image: mongo:7
+          command:
+            - mongosh
+            - --host
+            - mongo-0.mongo
+            - --quiet
+            - --eval
+            - |
+              try {
+                rs.status();
+                print("Replica set already initiated");
+              } catch (e) {
+                printjson(rs.initiate({
+                  _id: "rs0",
+                  members: [
+                    { _id: 0, host: "mongo-0.mongo:27017" },
+                    { _id: 1, host: "mongo-1.mongo:27017" },
+                    { _id: 2, host: "mongo-2.mongo:27017" }
+                  ]
+                }));
+              }
+              sleep(8000);
+              rs.status().members.forEach(function (m) { print(m.name + " -> " + m.stateStr); });
+
+######## k8s/mongo.yaml ########
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: emi
+spec:
+  clusterIP: None
+  selector:
+    app: mongo
+  ports:
+    - name: mongo
+      port: 27017
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  namespace: emi
+spec:
+  serviceName: mongo
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7
+          command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+
+######## k8s/web.yaml ########
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: emi-config
+  namespace: emi
+data:
+  MONGO_URL: "mongodb://mongo-0.mongo:27017,mongo-1.mongo:27017,mongo-2.mongo:27017/emidb?replicaSet=rs0"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emi-web
+  namespace: emi
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: emi-web
+  template:
+    metadata:
+      labels:
+        app: emi-web
+    spec:
+      containers:
+        - name: emi-web
+          image: emi-web:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: MONGO_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: emi-config
+                  key: MONGO_URL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: emi-web
+  namespace: emi
+spec:
+  type: ClusterIP
+  selector:
+    app: emi-web
+  ports:
+    - port: 80
+      targetPort: 3000
+
+######## results/milestone2/m2_get_all.txt ########
+NAME                          READY   STATUS      RESTARTS   AGE     IP            NODE   NOMINATED NODE   READINESS GATES
+pod/emi-web-5ccfc8996-f7fl7   1/1     Running     0          2m55s   10.244.0.12   emi    <none>           <none>
+pod/emi-web-5ccfc8996-sb7kj   1/1     Running     0          2m55s   10.244.0.11   emi    <none>           <none>
+pod/emi-web-5ccfc8996-whhrd   1/1     Running     0          2m55s   10.244.0.13   emi    <none>           <none>
+pod/mongo-0                   1/1     Running     0          13m     10.244.0.7    emi    <none>           <none>
+pod/mongo-1                   1/1     Running     0          12m     10.244.0.8    emi    <none>           <none>
+pod/mongo-2                   1/1     Running     0          12m     10.244.0.9    emi    <none>           <none>
+pod/mongo-init-5ljzg          0/1     Completed   0          8m33s   10.244.0.10   emi    <none>           <none>
+
+NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)     AGE     SELECTOR
+service/emi-web   ClusterIP   10.109.142.94   <none>        80/TCP      2m55s   app=emi-web
+service/mongo     ClusterIP   None            <none>        27017/TCP   13m     app=mongo
+
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES        SELECTOR
+deployment.apps/emi-web   3/3     3            3           2m55s   emi-web      emi-web:1.0   app=emi-web
+
+NAME                                DESIRED   CURRENT   READY   AGE     CONTAINERS   IMAGES        SELECTOR
+replicaset.apps/emi-web-5ccfc8996   3         3         3       2m55s   emi-web      emi-web:1.0   app=emi-web,pod-template-hash=5ccfc8996
+
+NAME                     READY   AGE   CONTAINERS   IMAGES
+statefulset.apps/mongo   3/3     13m   mongo        mongo:7
+
+NAME                   STATUS     COMPLETIONS   DURATION   AGE     CONTAINERS   IMAGES    SELECTOR
+job.batch/mongo-init   Complete   1/1           15s        8m33s   mongo-init   mongo:7   batch.kubernetes.io/controller-uid=d541401a-9610-411f-b48d-064d29d1edc6
+
+NAME                                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
+persistentvolumeclaim/data-mongo-0   Bound    pvc-05cb53cf-160d-4cf5-9624-7655be2783ed   1Gi        RWO            standard       <unset>                 13m   Filesystem
+persistentvolumeclaim/data-mongo-1   Bound    pvc-f8b8a526-6d97-4851-8279-b266ee5cb87a   1Gi        RWO            standard       <unset>                 12m   Filesystem
+persistentvolumeclaim/data-mongo-2   Bound    pvc-4659286b-e128-4919-9fbc-f39dc2ba932e   1Gi        RWO            standard       <unset>                 12m   Filesystem
+
+NAME                         DATA   AGE
+configmap/emi-config         1      2m55s
+configmap/kube-root-ca.crt   1      92m
+
+######## results/milestone2/m2_mongo_init_job_log.txt ########
+{
+  ok: 1
+}
+mongo-0.mongo:27017 -> SECONDARY
+mongo-1.mongo:27017 -> SECONDARY
+mongo-2.mongo:27017 -> SECONDARY
+
+######## results/milestone2/m2_persistence_test.txt ########
+===== BEFORE DELETE =====
+NAME      READY   STATUS    RESTARTS   AGE   IP           NODE   NOMINATED NODE   READINESS GATES
+mongo-1   1/1     Running   0          16m   10.244.0.8   emi    <none>           <none>
+NAME           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-mongo-1   Bound    pvc-f8b8a526-6d97-4851-8279-b266ee5cb87a   1Gi        RWO            standard       <unset>                 16m
+--- document count read from mongo-0 (PRIMARY) ---
+2
+--- document count read from mongo-1 itself ---
+2
+===== DELETING mongo-1 =====
+pod "mongo-1" deleted from emi namespace
+pod/mongo-1 condition met
+===== AFTER RECREATION =====
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE   NOMINATED NODE   READINESS GATES
+mongo-1   1/1     Running   0          4s    10.244.0.14   emi    <none>           <none>
+NAME           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-mongo-1   Bound    pvc-f8b8a526-6d97-4851-8279-b266ee5cb87a   1Gi        RWO            standard       <unset>                 16m
+--- document count read from mongo-1 itself ---
+2
+--- replica set status ---
+mongo-0.mongo:27017 -> SECONDARY
+mongo-1.mongo:27017 -> SECONDARY
+mongo-2.mongo:27017 -> PRIMARY
+
+######## results/milestone2/m2_rs_status.txt ########
+mongo-0.mongo:27017 -> PRIMARY
+mongo-1.mongo:27017 -> SECONDARY
+mongo-2.mongo:27017 -> SECONDARY
+
+######## results/milestone3/distribution_replicas3_summary.txt ########
+Requests served per pod (replicas3, 30 requests):
+     11 emi-web-5ccfc8996-f7fl7
+     10 emi-web-5ccfc8996-sb7kj
+      9 emi-web-5ccfc8996-whhrd
+replica-set term before: 96, after: 96
+
+######## results/milestone3/distribution_replicas5_summary.txt ########
+Requests served per pod (replicas5, 30 requests):
+      7 emi-web-5ccfc8996-sb7kj
+      6 emi-web-5ccfc8996-whhrd
+      6 emi-web-5ccfc8996-ltbgt
+      6 emi-web-5ccfc8996-f7fl7
+      5 emi-web-5ccfc8996-bvjwd
+replica-set term before: 105, after: 105
+
+######## results/milestone3/v1.1_change.diff ########
+diff --git a/app/public/index.html b/app/public/index.html
+index d63ea6e..7ff0232 100644
+--- a/app/public/index.html
++++ b/app/public/index.html
+@@ -3,7 +3,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+-  <title>Loan EMI Calculator</title>
++  <title>Loan EMI Calculator v1.1</title>
+   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+ </head>
+ <body class="bg-light">
+
+######## results/milestone3/rolling_update_rollout.txt ########
+16:13:55 START update
+deployment.apps/emi-web image updated
+Waiting for deployment "emi-web" rollout to finish: 0 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 2 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 3 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 3 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 3 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 2 old replicas are pending termination...
+Waiting for deployment "emi-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "emi-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "emi-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "emi-web" rollout to finish: 4 of 5 updated replicas are available...
+deployment "emi-web" successfully rolled out
+16:14:16 ROLLOUT DONE
+--- rollout history
+deployment.apps/emi-web 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+Image now: emi-web:1.1
+Page title served: <title>Loan EMI Calculator v1.1</title>
+Total requests: 123
+HTTP codes:
+    123 200
+Requests with no servedBy: 0
+Served per pod:
+     21 emi-web-5ccfc8996-69lzs
+     17 emi-web-5ccfc8996-whhrd
+     16 emi-web-7ff79975cf-gwwrr
+     14 emi-web-7ff79975cf-gwx9x
+     13 emi-web-7ff79975cf-vw7gj
+     13 emi-web-5ccfc8996-sb7kj
+     12 emi-web-5ccfc8996-ltbgt
+      8 emi-web-7ff79975cf-kcv72
+      7 emi-web-7ff79975cf-68mzk
+      2 emi-web-5ccfc8996-f7fl7
+
+######## results/milestone3/rolling_rollback_rollout.txt ########
+16:16:36 START rollback
+deployment.apps/emi-web rolled back
+Waiting for deployment "emi-web" rollout to finish: 0 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 0 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 2 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 3 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 3 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 3 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 3 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 4 out of 5 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 2 old replicas are pending termination...
+Waiting for deployment "emi-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "emi-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "emi-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "emi-web" rollout to finish: 4 of 5 updated replicas are available...
+deployment "emi-web" successfully rolled out
+16:16:59 ROLLOUT DONE
+--- rollout history
+deployment.apps/emi-web 
+REVISION  CHANGE-CAUSE
+2         <none>
+3         <none>
+
+Image now: emi-web:1.0
+Page title served: <title>Loan EMI Calculator</title>
+Total requests: 138
+HTTP codes:
+    138 200
+Requests with no servedBy: 0
+Served per pod:
+     26 emi-web-7ff79975cf-gwwrr
+     19 emi-web-7ff79975cf-kcv72
+     18 emi-web-7ff79975cf-gwx9x
+     15 emi-web-7ff79975cf-vw7gj
+     15 emi-web-5ccfc8996-v5r48
+     14 emi-web-5ccfc8996-jgl24
+     13 emi-web-5ccfc8996-x5qhl
+      7 emi-web-5ccfc8996-lv576
+      7 emi-web-5ccfc8996-kdqgp
+      4 emi-web-7ff79975cf-68mzk
+
+######## results/milestone3/selfheal_primary_replset.txt ########
+15:40:07 BEFORE (PRIMARY=mongo-2)
+mongo-0.mongo:27017 SECONDARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 PRIMARY
+term Long('109')
+15:40:19 DELETING PRIMARY mongo-2
+--- 15:40:24 (+5s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:40:30 (+10s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:40:37 (+15s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 (not reachable/healthy)
+term Long('110')
+--- 15:40:43 (+20s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:40:51 (+25s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:41:00 (+30s after delete)
+mongo-0.mongo:27017 PRIMARY
+mongo-1.mongo:27017 SECONDARY
+mongo-2.mongo:27017 SECONDARY
+term Long('110')
+--- 15:41:13 (+35s after delete)
+mongo-0.mongo:27017 SECONDARY
+mongo-1.mongo:27017 PRIMARY
+mongo-2.mongo:27017 SECONDARY
+term Long('111')
+--- 15:41:20 (+40s after delete)
+mongo-0.mongo:27017 SECONDARY
+mongo-1.mongo:27017 PRIMARY
+mongo-2.mongo:27017 SECONDARY
+term Long('111')
+
+######## results/milestone3/rolling_rollback_pods_watch.txt ########
+16:16:31 NAME                       READY   STATUS      RESTARTS      AGE
+16:16:31 emi-web-7ff79975cf-68mzk   1/1     Running     0             2m23s
+16:16:31 emi-web-7ff79975cf-gwwrr   1/1     Running     0             2m36s
+16:16:31 emi-web-7ff79975cf-gwx9x   1/1     Running     0             2m35s
+16:16:31 emi-web-7ff79975cf-kcv72   1/1     Running     0             2m25s
+16:16:31 emi-web-7ff79975cf-vw7gj   1/1     Running     0             2m36s
+16:16:31 mongo-0                    1/1     Running     1 (37h ago)   2d9h
+16:16:31 mongo-1                    1/1     Running     1 (37h ago)   2d9h
+16:16:31 mongo-2                    1/1     Running     0             35m
+16:16:31 mongo-init-5ljzg           0/1     Completed   0             2d9h
+16:16:36 emi-web-5ccfc8996-jgl24    0/1     Pending     0             0s
+16:16:37 emi-web-5ccfc8996-x5qhl    0/1     Pending     0             0s
+16:16:37 emi-web-7ff79975cf-68mzk   1/1     Terminating   0             2m28s
+16:16:37 emi-web-7ff79975cf-68mzk   1/1     Terminating   0             2m29s
+16:16:37 emi-web-5ccfc8996-jgl24    0/1     Pending       0             1s
+16:16:37 emi-web-5ccfc8996-x5qhl    0/1     Pending       0             1s
+16:16:37 emi-web-5ccfc8996-v5r48    0/1     Pending       0             0s
+16:16:37 emi-web-5ccfc8996-v5r48    0/1     Pending       0             0s
+16:16:39 emi-web-5ccfc8996-jgl24    0/1     Pending       0             3s
+16:16:39 emi-web-5ccfc8996-x5qhl    0/1     Pending       0             3s
+16:16:39 emi-web-5ccfc8996-v5r48    0/1     Pending       0             2s
+16:16:40 emi-web-5ccfc8996-jgl24    0/1     ContainerCreating   0             3s
+16:16:40 emi-web-5ccfc8996-x5qhl    0/1     ContainerCreating   0             4s
+16:16:40 emi-web-5ccfc8996-v5r48    0/1     ContainerCreating   0             3s
+16:16:41 emi-web-5ccfc8996-jgl24    0/1     ContainerCreating   0             5s
+16:16:42 emi-web-5ccfc8996-v5r48    0/1     ContainerCreating   0             5s
+16:16:42 emi-web-5ccfc8996-x5qhl    0/1     ContainerCreating   0             6s
+16:16:43 emi-web-5ccfc8996-jgl24    0/1     Running             0             7s
+16:16:43 emi-web-5ccfc8996-x5qhl    0/1     Running             0             7s
+16:16:43 emi-web-5ccfc8996-v5r48    0/1     Running             0             6s
+
+######## results/milestone3/rolling_update_pods_watch.txt ########
+16:13:50 NAME                      READY   STATUS      RESTARTS       AGE
+16:13:50 emi-web-5ccfc8996-69lzs   1/1     Running     1 (11m ago)    44m
+16:13:50 emi-web-5ccfc8996-f7fl7   1/1     Running     18 (11m ago)   2d9h
+16:13:50 emi-web-5ccfc8996-ltbgt   1/1     Running     1 (11m ago)    58m
+16:13:50 emi-web-5ccfc8996-sb7kj   1/1     Running     14 (11m ago)   2d9h
+16:13:50 emi-web-5ccfc8996-whhrd   1/1     Running     14 (11m ago)   2d9h
+16:13:50 mongo-0                   1/1     Running     1 (37h ago)    2d9h
+16:13:50 mongo-1                   1/1     Running     1 (37h ago)    2d9h
+16:13:50 mongo-2                   1/1     Running     0              33m
+16:13:50 mongo-init-5ljzg          0/1     Completed   0              2d9h
+16:13:55 emi-web-7ff79975cf-vw7gj   0/1     Pending     0              0s
+16:13:56 emi-web-7ff79975cf-gwwrr   0/1     Pending     0              0s
+16:13:56 emi-web-7ff79975cf-vw7gj   0/1     Pending     0              0s
+16:13:56 emi-web-7ff79975cf-gwwrr   0/1     Pending     0              0s
+16:13:56 emi-web-5ccfc8996-f7fl7    1/1     Terminating   18 (11m ago)   2d9h
+16:13:56 emi-web-7ff79975cf-vw7gj   0/1     ContainerCreating   0              1s
+16:13:56 emi-web-7ff79975cf-gwx9x   0/1     Pending             0              0s
+16:13:56 emi-web-7ff79975cf-gwx9x   0/1     Pending             0              0s
+16:13:56 emi-web-5ccfc8996-f7fl7    1/1     Terminating         18 (11m ago)   2d9h
+16:13:56 emi-web-7ff79975cf-gwwrr   0/1     ContainerCreating   0              1s
+16:13:56 emi-web-7ff79975cf-gwx9x   0/1     ContainerCreating   0              0s
+16:13:58 emi-web-7ff79975cf-gwx9x   0/1     ContainerCreating   0              2s
+16:13:59 emi-web-7ff79975cf-gwwrr   0/1     ContainerCreating   0              4s
+16:13:59 emi-web-7ff79975cf-vw7gj   0/1     ContainerCreating   0              4s
+16:14:00 emi-web-7ff79975cf-gwwrr   0/1     Running             0              5s
+16:14:00 emi-web-7ff79975cf-gwx9x   0/1     Running             0              4s
+16:14:00 emi-web-7ff79975cf-vw7gj   0/1     Running             0              5s
+16:14:06 emi-web-7ff79975cf-gwwrr   1/1     Running             0              11s
+16:14:06 emi-web-5ccfc8996-ltbgt    1/1     Terminating         1 (11m ago)    58m
+16:14:06 emi-web-5ccfc8996-ltbgt    1/1     Terminating         1 (11m ago)    58m
+
+######## results/milestone3/scale5_pods_watch.txt ########
+15:15:38 emi-web-5ccfc8996-f7fl7   1/1   Running   17 (36h ago)   2d8h
+15:15:38 emi-web-5ccfc8996-sb7kj   1/1   Running   13 (36h ago)   2d8h
+15:15:38 emi-web-5ccfc8996-whhrd   1/1   Running   13 (25h ago)   2d8h
+15:15:41 emi-web-5ccfc8996-bvjwd   0/1   Pending   0              0s
+15:15:41 emi-web-5ccfc8996-ltbgt   0/1   Pending   0              0s
+15:15:41 emi-web-5ccfc8996-ltbgt   0/1   Pending   0              0s
+15:15:41 emi-web-5ccfc8996-bvjwd   0/1   Pending   0              0s
+15:15:42 emi-web-5ccfc8996-ltbgt   0/1   ContainerCreating   0              1s
+15:15:42 emi-web-5ccfc8996-bvjwd   0/1   ContainerCreating   0              1s
+15:15:43 emi-web-5ccfc8996-ltbgt   0/1   ContainerCreating   0              2s
+15:15:43 emi-web-5ccfc8996-bvjwd   0/1   ContainerCreating   0              2s
+15:15:43 emi-web-5ccfc8996-ltbgt   0/1   Running             0              2s
+15:15:43 emi-web-5ccfc8996-bvjwd   0/1   Running             0              2s
+15:15:49 emi-web-5ccfc8996-ltbgt   1/1   Running             0              8s
+15:15:49 emi-web-5ccfc8996-ltbgt   1/1   Running             0              8s
+15:15:50 emi-web-5ccfc8996-bvjwd   1/1   Running             0              9s
+
+######## results/milestone3/selfheal_primary_pods_watch.txt ########
+15:40:09 NAME                      READY   STATUS      RESTARTS       AGE
+15:40:09 emi-web-5ccfc8996-69lzs   1/1     Running     0              10m
+15:40:09 emi-web-5ccfc8996-f7fl7   1/1     Running     17 (36h ago)   2d8h
+15:40:09 emi-web-5ccfc8996-ltbgt   1/1     Running     0              24m
+15:40:09 emi-web-5ccfc8996-sb7kj   1/1     Running     13 (36h ago)   2d8h
+15:40:09 emi-web-5ccfc8996-whhrd   1/1     Running     13 (26h ago)   2d8h
+15:40:09 mongo-0                   1/1     Running     1 (36h ago)    2d9h
+15:40:09 mongo-1                   1/1     Running     1 (36h ago)    2d8h
+15:40:09 mongo-2                   1/1     Running     1 (36h ago)    2d9h
+15:40:09 mongo-init-5ljzg          0/1     Completed   0              2d8h
+15:40:19 mongo-2                   1/1     Terminating   1 (36h ago)    2d9h
+15:40:19 mongo-2                   1/1     Terminating   1 (36h ago)    2d9h
+15:40:36 mongo-2                   0/1     Completed     1 (36h ago)    2d9h
+15:40:37 mongo-2                   0/1     Completed     1 (36h ago)    2d9h
+15:40:37 mongo-2                   0/1     Completed     1 (36h ago)    2d9h
+15:40:37 mongo-2                   0/1     Pending       0              0s
+15:40:37 mongo-2                   0/1     Pending       0              0s
+15:40:37 mongo-2                   0/1     ContainerCreating   0              0s
+15:40:39 mongo-2                   0/1     ContainerCreating   0              2s
+15:40:39 mongo-2                   1/1     Running             0              2s
+
+######## results/milestone3/selfheal_web_pods_watch.txt ########
+15:29:34 NAME                      READY   STATUS      RESTARTS       AGE
+15:29:34 emi-web-5ccfc8996-bvjwd   1/1     Running     0              13m
+15:29:34 emi-web-5ccfc8996-f7fl7   1/1     Running     17 (36h ago)   2d8h
+15:29:34 emi-web-5ccfc8996-ltbgt   1/1     Running     0              13m
+15:29:34 emi-web-5ccfc8996-sb7kj   1/1     Running     13 (36h ago)   2d8h
+15:29:34 emi-web-5ccfc8996-whhrd   1/1     Running     13 (26h ago)   2d8h
+15:29:34 mongo-0                   1/1     Running     1 (36h ago)    2d8h
+15:29:34 mongo-1                   1/1     Running     1 (36h ago)    2d8h
+15:29:34 mongo-2                   1/1     Running     1 (36h ago)    2d8h
+15:29:34 mongo-init-5ljzg          0/1     Completed   0              2d8h
+15:29:45 emi-web-5ccfc8996-bvjwd   1/1     Terminating   0              14m
+15:29:45 emi-web-5ccfc8996-bvjwd   1/1     Terminating   0              14m
+15:29:45 emi-web-5ccfc8996-69lzs   0/1     Pending       0              0s
+15:29:45 emi-web-5ccfc8996-69lzs   0/1     Pending       0              0s
+15:29:45 emi-web-5ccfc8996-69lzs   0/1     ContainerCreating   0              0s
+15:29:46 emi-web-5ccfc8996-69lzs   0/1     ContainerCreating   0              1s
+15:29:47 emi-web-5ccfc8996-69lzs   0/1     Running             0              2s
+15:29:52 emi-web-5ccfc8996-69lzs   1/1     Running             0              7s
+15:30:16 emi-web-5ccfc8996-bvjwd   0/1     Error               0              14m
+15:30:16 emi-web-5ccfc8996-bvjwd   0/1     Error               0              14m
+15:30:17 emi-web-5ccfc8996-bvjwd   0/1     Error               0              14m
+15:30:17 emi-web-5ccfc8996-bvjwd   0/1     Error               0              14m
+
+######## results/milestone3/rolling_rollback_requests.log (first 5, last 5 lines, then failure count) ########
+16:16:31 1 emi-web-7ff79975cf-gwx9x 200
+16:16:31 2 emi-web-7ff79975cf-vw7gj 200
+16:16:31 3 emi-web-7ff79975cf-gwwrr 200
+16:16:32 4 emi-web-7ff79975cf-gwwrr 200
+16:16:32 5 emi-web-7ff79975cf-gwx9x 200
+...
+16:17:08 134 emi-web-5ccfc8996-v5r48 200
+16:17:08 135 emi-web-5ccfc8996-jgl24 200
+16:17:08 136 emi-web-5ccfc8996-x5qhl 200
+16:17:08 137 emi-web-5ccfc8996-jgl24 200
+16:17:09 138 emi-web-5ccfc8996-v5r48 200
+lines: 138
+
+######## results/milestone3/rolling_update_requests.log (first 5, last 5 lines, then failure count) ########
+16:13:50 1 emi-web-5ccfc8996-whhrd 200
+16:13:52 2 emi-web-5ccfc8996-sb7kj 200
+16:13:53 3 emi-web-5ccfc8996-sb7kj 200
+16:13:53 4 emi-web-5ccfc8996-f7fl7 200
+16:13:53 5 emi-web-5ccfc8996-69lzs 200
+...
+16:14:25 119 emi-web-7ff79975cf-kcv72 200
+16:14:25 120 emi-web-7ff79975cf-68mzk 200
+16:14:25 121 emi-web-7ff79975cf-gwx9x 200
+16:14:25 122 emi-web-7ff79975cf-vw7gj 200
+16:14:26 123 emi-web-7ff79975cf-68mzk 200
+lines: 123
+
+######## results/milestone3/selfheal_primary_requests.log (first 5, last 5 lines, then failure count) ########
+15:40:09 1 emi-web-5ccfc8996-sb7kj 200
+15:40:09 2 emi-web-5ccfc8996-69lzs 200
+15:40:09 3 emi-web-5ccfc8996-f7fl7 200
+15:40:10 4 emi-web-5ccfc8996-ltbgt 200
+15:40:10 5 emi-web-5ccfc8996-ltbgt 200
+...
+15:41:21 187 emi-web-5ccfc8996-whhrd 200
+15:41:21 188 emi-web-5ccfc8996-sb7kj 200
+15:41:22 189 emi-web-5ccfc8996-ltbgt 200
+15:41:22 190 emi-web-5ccfc8996-69lzs 200
+15:41:22 191 emi-web-5ccfc8996-f7fl7 200
+lines: 191
+
+######## results/milestone3/selfheal_web_requests.log (first 5, last 5 lines, then failure count) ########
+15:29:34 1 emi-web-5ccfc8996-f7fl7
+15:29:34 2 emi-web-5ccfc8996-bvjwd
+15:29:35 3 emi-web-5ccfc8996-whhrd
+15:29:35 4 emi-web-5ccfc8996-bvjwd
+15:29:35 5 emi-web-5ccfc8996-whhrd
+...
+15:30:25 168 emi-web-5ccfc8996-whhrd
+15:30:25 169 emi-web-5ccfc8996-whhrd
+15:30:29 170 emi-web-5ccfc8996-ltbgt
+15:30:29 171 emi-web-5ccfc8996-sb7kj
+15:30:29 172 emi-web-5ccfc8996-69lzs
+lines: 172
+
+######## fixed_runs_table.csv ########
+replicas,rate,requests,replies,achieved_reply_rate,resp_ms,s2xx,s5xx,errors,duration
+1,10,600,600,10.0,24.0,600,0,0,59.911
+1,25,1500,1192,19.9,248.4,1072,120,308,59.999
+1,50,3000,3000,50.0,34.6,3000,0,0,59.991
+1,100,6000,5237,84.7,877.8,4136,1101,763,61.811
+1,200,12000,5883,98.0,256.4,967,4916,6117,60.001
+2,10,600,600,10.0,29.2,599,1,0,59.936
+2,25,1500,1500,25.0,37.0,1499,1,0,59.972
+2,50,3000,3000,50.0,38.0,3000,0,0,59.998
+2,100,6000,6000,99.9,55.5,6000,0,0,60.038
+2,200,12000,10507,174.5,807.9,3529,6978,1493,60.218
+3,10,600,600,10.0,38.1,599,1,0,59.914
+3,25,1500,1500,25.0,51.4,1499,1,0,59.982
+3,50,3000,3000,50.0,41.3,3000,0,0,59.999
+3,100,6000,5998,92.4,315.6,5988,10,2,64.911
+3,200,12000,10513,161.9,911.3,10466,47,1487,64.952
+
+######## hpa_replicas.csv ########
+timestamp,phase,current_replicas,desired_replicas,cpu_percent
+2026-11-25 17:45:55,phase1_10rps,1,1,5
+2026-11-25 17:46:10,phase1_10rps,1,1,5
+2026-11-25 17:46:25,phase1_10rps,1,1,5
+2026-11-25 17:46:41,phase1_10rps,1,1,25
+2026-11-25 17:46:56,phase1_10rps,1,1,25
+2026-11-25 17:47:11,phase1_10rps,1,1,25
+2026-11-25 17:47:27,phase1_10rps,1,1,25
+2026-11-25 17:47:42,phase1_10rps,1,1,36
+2026-11-25 17:47:57,phase2_100rps,1,1,36
+2026-11-25 17:48:13,phase2_100rps,1,1,36
+2026-11-25 17:48:29,phase2_100rps,1,1,36
+2026-11-25 17:48:50,phase2_100rps,1,4,171
+2026-11-25 17:49:07,phase2_100rps,4,4,171
+2026-11-25 17:49:26,phase2_100rps,4,4,171
+2026-11-25 17:49:45,phase2_100rps,4,4,
+2026-11-25 17:50:06,phase2_100rps,4,4,
+2026-11-25 17:50:26,phase2_100rps,4,4,
+2026-11-25 17:50:50,phase2_100rps,4,4,120
+2026-11-25 17:51:12,phase2_100rps,4,4,120
+2026-11-25 17:51:27,phase2_100rps,4,4,120
+2026-11-25 17:51:43,phase2_100rps,4,4,120
+2026-11-25 17:51:59,phase2_100rps,4,4,189
+2026-11-25 17:52:15,phase2_100rps,4,4,189
+2026-11-25 17:52:30,phase2_100rps,4,4,189
+2026-11-25 17:52:46,phase2_100rps,4,4,189
+2026-11-25 17:53:02,phase3_10rps,4,5,135
+2026-11-25 17:53:17,phase3_10rps,5,5,135
+2026-11-25 17:53:33,phase3_10rps,5,5,135
+2026-11-25 17:53:48,phase3_10rps,5,5,49
+2026-11-25 17:54:04,phase3_10rps,5,5,49
+2026-11-25 17:54:19,phase3_10rps,5,5,49
+2026-11-25 17:54:35,phase3_10rps,5,5,49
+2026-11-25 17:54:50,phase3_10rps,5,5,15
+2026-11-25 17:55:05,phase3_10rps,5,5,15
+2026-11-25 17:55:21,phase3_10rps,5,5,15
+2026-11-25 17:55:36,phase3_10rps,5,5,15
+2026-11-25 17:55:52,phase3_10rps,5,5,14
+
+######## hpa_scaledown.csv ########
+timestamp,current_replicas,desired_replicas,cpu_percent
+2026-11-25 18:00:45,2,2,8
+2026-11-25 18:01:00,2,2,8
+2026-11-25 18:01:16,2,2,8
+2026-11-25 18:01:31,2,2,8
+2026-11-25 18:01:51,2,2,8
+2026-11-25 18:03:05,2,1,7
+2026-11-25 18:03:20,1,1,3
+2026-11-25 18:03:36,1,1,5
+2026-11-25 18:03:51,1,1,5
+2026-11-25 18:04:06,1,1,5
+2026-11-25 18:04:21,1,1,5
+2026-11-25 18:04:36,1,1,5
+2026-11-25 18:04:51,1,1,5
+2026-11-25 18:05:06,1,1,5
+2026-11-25 18:07:27,1,1,5
+2026-11-25 18:07:42,1,1,10
+2026-11-25 18:08:05,1,1,10
+2026-11-25 18:08:20,1,1,10
+2026-11-25 18:09:02,1,1,10
+2026-11-25 18:09:17,1,1,4
+2026-11-25 18:09:32,1,1,4
+2026-11-25 18:09:47,1,1,5
+2026-11-25 18:10:03,1,1,5
+2026-11-25 18:10:18,1,1,5
+2026-11-25 18:10:33,1,1,5
+2026-11-25 18:10:48,1,1,5
+2026-11-25 18:11:03,1,1,5
+2026-11-25 18:11:18,1,1,5
+2026-11-25 18:11:34,1,1,5
+2026-11-25 18:11:49,1,1,5
+2026-11-25 18:12:04,1,1,5
+2026-11-25 18:12:19,1,1,5
+
+######## hpa_events.txt ########
+Labels:                                                <none>
+Annotations:                                           <none>
+CreationTimestamp:                                     Wed, 25 Nov 2026 17:45:55 +0000
+Reference:                                             Deployment/emi-web
+Metrics:                                               ( current / target )
+  resource cpu on pods  (as a percentage of request):  4% (4m) / 50%
+Min replicas:                                          1
+Max replicas:                                          5
+Deployment pods:                                       1 current / 1 desired
+Conditions:
+  Type            Status  Reason              Message
+  ----            ------  ------              -------
+  AbleToScale     True    ReadyForNewScale    recommended size matches current size
+  ScalingActive   True    ValidMetricFound    the HPA was able to successfully calculate a replica count from cpu resource utilization (percentage of request)
+  ScalingLimited  False   DesiredWithinRange  the desired count is within the acceptable range
+  ScaledToZero    False   NotScaledToZero     the HPA controller did not scale the workload to zero
+Events:
+  Type     Reason                        Age                From                       Message
+  ----     ------                        ----               ----                       -------
+  Normal   SuccessfulRescale             24m                horizontal-pod-autoscaler  New size: 4; reason: cpu resource utilization (percentage of request) above target
+  Warning  FailedGetResourceMetric       22m (x4 over 23m)  horizontal-pod-autoscaler  failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API
+  Warning  FailedComputeMetricsReplicas  22m (x4 over 23m)  horizontal-pod-autoscaler  invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API
+  Normal   SuccessfulRescale             20m                horizontal-pod-autoscaler  New size: 5; reason: cpu resource utilization (percentage of request) above target
+  Normal   SuccessfulRescale             13m                horizontal-pod-autoscaler  New size: 2; reason: All metrics below target
+  Normal   SuccessfulRescale             11m                horizontal-pod-autoscaler  New size: 1; reason: All metrics below target
