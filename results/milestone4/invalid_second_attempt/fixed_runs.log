@@ -1,0 +1,3 @@
+deployment.apps/emi-web scaled
+deployment "emi-web" successfully rolled out
+17:03:39 RUN r1_rate10

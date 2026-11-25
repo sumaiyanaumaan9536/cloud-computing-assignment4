@@ -1,0 +1,1 @@
+replicas,target_rate,sessions,duration_s,replies,achieved_rps,avg_resp_ms,client_errors,replies_2xx,replies_non2xx

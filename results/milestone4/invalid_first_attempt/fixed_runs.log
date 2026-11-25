@@ -1,0 +1,43 @@
+deployment.apps/emi-web scaled
+deployment "emi-web" successfully rolled out
+16:25:52 RUN r1_rate10
+1,10,60,1000,1000,10.0,24.8,0,1000,0
+16:27:47 RUN r1_rate25
+1,25,60,1000,1000,25.0,26.1,0,1000,0
+16:28:59 RUN r1_rate50
+1,50,60,1000,635,49.4,77.9,365,108,527
+16:29:35 RUN r1_rate100
+1,100,60,1000,993,100.1,707.5,7,465,528
+16:30:00 RUN r1_rate200
+1,200,60,1000,158,99.6,886.6,842,158,0
+deployment.apps/emi-web scaled
+Waiting for deployment "emi-web" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "emi-web" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "emi-web" rollout to finish: 1 of 2 updated replicas are available...
+Waiting for deployment "emi-web" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "emi-web" rollout to finish: 1 of 2 updated replicas are available...
+deployment "emi-web" successfully rolled out
+16:32:31 RUN r2_rate10
+2,10,60,1000,1000,10.0,21.2,0,1000,0
+16:34:26 RUN r2_rate25
+2,25,60,1000,1000,25.0,29.3,0,1000,0
+16:35:21 RUN r2_rate50
+2,50,60,1000,1000,48.7,55.5,0,999,1
+16:36:07 RUN r2_rate100
+2,100,60,1000,660,66.7,1488.9,340,658,2
+16:37:19 RUN r2_rate200
+2,200,60,1000,215,100.0,1503.2,785,71,144
+deployment.apps/emi-web scaled
+Waiting for deployment "emi-web" rollout to finish: 2 of 3 updated replicas are available...
+deployment "emi-web" successfully rolled out
+16:38:49 RUN r3_rate10
+3,10,60,1000,1000,10.0,159.2,0,919,81
+16:40:44 RUN r3_rate25
+3,25,60,1000,1000,25.0,26.6,0,1000,0
+16:42:04 RUN r3_rate50
+3,50,60,1000,1000,49.4,2053.4,0,564,436
+16:42:40 RUN r3_rate100
+3,100,60,1000,1000,98.6,156.6,0,1000,0
+16:43:05 RUN r3_rate200
+3,200,60,1000,942,104.3,2219.6,58,942,0
+ALL 15 RUNS DONE

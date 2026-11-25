@@ -1,0 +1,6 @@
+NAME                      READY   STATUS      RESTARTS      AGE
+emi-web-5ccfc8996-v2dmf   1/1     Running     0             11m
+mongo-0                   1/1     Running     1 (38h ago)   2d10h
+mongo-1                   1/1     Running     1 (38h ago)   2d9h
+mongo-2                   1/1     Running     0             69m
+mongo-init-5ljzg          0/1     Completed   0             2d10h

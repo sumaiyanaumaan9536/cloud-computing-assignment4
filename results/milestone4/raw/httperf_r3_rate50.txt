@@ -1,0 +1,30 @@
+httperf: warning: open file limit > FD_SETSIZE; limiting max. # of open files to FD_SETSIZE
+httperf --timeout=5 --client=0/1 --server=emi.local --port=80 --uri=/ --rate=50 --send-buffer=4096 --recv-buffer=16384 --add-header='Content-Type: application/json\n' --wsesslog=3000,0.000,results/milestone4/workload.txt
+Maximum connect burst length: 1
+
+Total: connections 3000 requests 3000 replies 3000 test-duration 59.999 s
+
+Connection rate: 50.0 conn/s (20.0 ms/conn, <=28 concurrent connections)
+Connection time [ms]: min 8.6 avg 41.3 max 666.6 median 21.5 stddev 57.4
+Connection time [ms]: connect 0.0
+Connection length [replies/conn]: 1.000
+
+Request rate: 50.0 req/s (20.0 ms/req)
+Request size [B]: 150.0
+
+Reply rate [replies/s]: min 49.4 avg 50.0 max 50.6 stddev 0.3 (12 samples)
+Reply time [ms]: response 41.3 transfer 0.0
+Reply size [B]: header 213.0 content 125.0 footer 0.0 (total 338.0)
+Reply status: 1xx=0 2xx=3000 3xx=0 4xx=0 5xx=0
+
+CPU time [s]: user 17.98 system 40.58 (user 30.0% system 67.6% total 97.6%)
+Net I/O: 23.9 KB/s (0.2*10^6 bps)
+
+Errors: total 0 client-timo 0 socket-timo 0 connrefused 0 connreset 0
+Errors: fd-unavail 0 addrunavail 0 ftab-full 0 other 0
+
+Session rate [sess/s]: min 49.40 avg 50.00 max 50.60 stddev 0.28 (3000/3000)
+Session: avg 1.00 connections/session
+Session lifetime [s]: 0.0
+Session failtime [s]: 0.0
+Session length histogram: 0 3000
